@@ -65,9 +65,9 @@ pip install flask requests gunicorn
 ### 运行 Flask 应用程序
 使用 gunicorn 来运行
 ```
-gunicorn -w 4 -b 0.0.0.0:8000 app:app
+gunicorn -w 1 -b 0.0.0.0:8000 app:app
 ```
--w 4：使用 4 个 worker 进程
+-w 1：使用 1 个 worker 进程
 -b 0.0.0.0:8000：监听所有接口上的 8000 端口
 
 ## 测试应用
@@ -122,7 +122,6 @@ waitress-serve --listen=0.0.0.0:8000 app:app
 参数说明：
 
 --listen=0.0.0.0:8000：让 Waitress 监听所有网络接口上的端口 8000。
-app:app：指向你的 Flask 应用，格式是 文件名:Flask实例名
 
 ## 测试应用
 打开浏览器，访问 http://127.0.0.1:8000 或 http://<your-ip>:8000，如果一切顺利，你应该就可以看到登录页了
