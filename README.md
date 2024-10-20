@@ -1,6 +1,16 @@
 ## 项目介绍  
 基于始皇的OAIFree服务，搭建一个共享站，方便给自己的小伙伴们使用  
 
+## 配置项  
+### config.json
+secret_key最好复杂一点  
+domain是oaifree的站点地址，这里用的是始皇的，可以替换成自己的反代地址  
+```
+{
+    "secret_key":"your_admin_secret_key",
+    "domain":"new.oaifree.com" 
+}
+```
 ## 页面预览  
 
 ### 登录页  
