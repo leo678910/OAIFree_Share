@@ -530,11 +530,14 @@ def update_token(email):
     # 如果提供了ReToken，则更新ReToken
     if data.get('ReToken'):
         tokens[token_index]['refresh_token'] = data['ReToken']
+    else:
+        tokens[token_index]['refresh_token'] = ''
 
     # 如果提供了AcToken，则更新AcToken
     if data.get('AcToken'):
         tokens[token_index]['access_token'] = data['AcToken']
-    
+    else:
+        tokens[token_index]['access_token'] = ''
     save_retoken(tokens)
     return jsonify({'success': True, 'message': '账号更新成功'})
 
