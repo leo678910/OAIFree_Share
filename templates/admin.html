@@ -220,11 +220,12 @@ function loadTokens() {
                         if (!token.refresh_token) {
                             rt = '无'
                         }
+                        let recolor = token.refresh_token ? ' style="color: rgb(6, 161, 6);"' : ' style="color: rgb(204, 28, 28);"'
                         let color = token.status ? ' style="color: rgb(6, 161, 6);"' : ' style="color: rgb(204, 28, 28);"'
                         const row = document.createElement('tr');
                         row.innerHTML = `
                         <td class="truncate">${token.email}</td>
-                        <td class="truncate">${rt}</td>
+                        <td class="truncate" ${recolor}>${rt}</td>
                         <td class="truncate"  ${color}>${token.status ? '有效' : '失效'}</td>
                         <td>
                             <button onclick="editUser('${token.email}')" class="text-blue-600 hover:text-blue-900 mr-4">编辑</button>
