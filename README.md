@@ -70,7 +70,7 @@ source venv/bin/activate
 ```
 ### 安装 Flask 和项目依赖
 ```
-pip install flask requests gunicorn
+pip install flask requests werkzeug gunicorn
 ```
 
 ### 运行 Flask 应用程序
@@ -122,7 +122,7 @@ venv\Scripts\activate
 
 ### 安装 Flask 和项目依赖
 ```
-pip install flask requests waitress
+pip install flask requests werkzeug waitress
 ```
 ### 运行 Flask 应用程序
 使用 Waitress 运行 Flask 应用：
