@@ -30,10 +30,11 @@ domain是oaifree的站点地址，这里用的是始皇的，可以替换成自�
 
 ---
 ### Token管理页  
-可对Refresh Token进行修改  
-支持自动/手动刷新Access Token  
+支持新增、删除、修改账号  
+可自动自动/手动刷新带有Refresh Token账号的Access Token  
 显示刷新失败的Refresh Token信息  
-![image](https://github.com/user-attachments/assets/198a30e2-b8f9-4ac7-960f-3ad84a5a8a2d)
+对失效账号进行标记
+![image](https://github.com/user-attachments/assets/0a4e26f5-dc9f-49b4-bc88-0860748a73d7)
 
 ---
 ### 用户管理页 
