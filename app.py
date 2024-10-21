@@ -536,6 +536,7 @@ def update_token(email):
     # 如果提供了AcToken，则更新AcToken
     if data.get('AcToken'):
         tokens[token_index]['access_token'] = data['AcToken']
+        tokens[token_index]['status'] = True
     else:
         tokens[token_index]['access_token'] = ''
     save_retoken(tokens)
