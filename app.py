@@ -16,28 +16,20 @@ with open('config.json', 'r') as config_file:
 # 将配置项设置为 Flask 的 config
 app.config.update(config)
 
-# 读取 retoken.json 文件
+# 读取 chatToken.json 文件
 def load_retoken():
     try:
-        with open('json/retoken.json', 'r') as f:
+        with open('json/chatToken.json', 'r') as f:
             retokens = json.load(f)
         return retokens
     except FileNotFoundError:
         return []
 
-# 写入 retoken.json 文件
-def save_retoken(data):
-    with open('json/retoken.json', 'w') as f:
-        json.dump(data, f, indent=4)
+# 保存更新后的 chatToken.json 文件
+def save_retoken(updated_tokens):
+    with open('json/chatToken.json', 'w') as f:
+        json.dump(updated_tokens, f, indent=4)
 
-# 读取 actoken.json 文件
-def load_access_tokens():
-    try:
-        with open('json/actoken.json', 'r') as f:
-            access_tokens = json.load(f)
-        return access_tokens
-    except FileNotFoundError:
-        return []
 
 # 写入 failed_tokens.json 文件
 def save_failed_tokens(failed_tokens):
@@ -73,50 +65,50 @@ def save_users(users):
 
 # 刷新 access_token 的主函数
 def refresh_access_tokens():
-    # 读取 retoken.json 文件
+    # 读取 refresh_token 列表
     refresh_tokens = load_retoken()
 
-    access_tokens = load_access_tokens()
+    failed_tokens = []  # 用于记录获取 access_token 失败的邮箱和 refresh_token
 
-    # 将现有的 access_tokens 转换为字典，方便更新
-    access_token_dict = {list(item.keys())[0]: list(item.values())[0] for item in access_tokens}
+    # 遍历 refresh_token 列表
+    for token_info in refresh_tokens:
+        email = token_info['email']
+        refresh_token = token_info['refresh_token']
 
-    # 用于记录获取 access_token 失败的邮箱和 refresh_token
-    failed_tokens = []
+        # 如果 refresh_token 为空，跳过这一行
+        if not refresh_token:
+            continue
 
-    # 遍历 refresh_token 列表，获取每个 email 和 token
-    for item in refresh_tokens:
-        for email, refresh_token in item.items():
+        try:
             # 使用 POST 请求通过 refresh_token 获取 access_token
             response = requests.post(
                 "https://token.oaifree.com/api/auth/refresh",
                 data={"refresh_token": refresh_token}
             )
-            # 获取 access_token
-            access_token = response.json().get("access_token")
+            response_data = response.json()
 
+            access_token = response_data.get("access_token")
             if access_token:  # 如果成功获取到 access_token
-                # 更新 access_token
-                access_token_dict[email] = access_token
-            else:  # 如果 access_token 为空，删除对应的条目
-                failed_tokens.append({email: refresh_token})
-                if email in access_token_dict:
-                    del access_token_dict[email]  # 从 access_token_dict 中删除该 email 条目
+                # 更新 access_token 和状态为 True
+                token_info['access_token'] = access_token
+                token_info['status'] = True
+            else:
+                # 如果获取失败，设置状态为 False
+                token_info['status'] = False
+                failed_tokens.append(token_info)
+        
+        except Exception as e:
+            # 捕获请求错误并记录失败的 token，状态为 False
+            token_info['status'] = False
+            failed_tokens.append(token_info)
 
-    # 将更新后的 access_token 字典转换回列表形式
-    updated_access_tokens = [{email: token} for email, token in access_token_dict.items()]
-
-    # 将结果写入到 actoken.json 文件
-    with open('json/actoken.json', 'w') as f:
-        json.dump(updated_access_tokens, f, indent=4)
+    # 保存更新后的 retoken 数据
+    save_retoken(refresh_tokens)
 
     # 如果有失败的 token，记录到 failed_tokens.json
-    if failed_tokens:
-        save_failed_tokens(failed_tokens)
-    else:
-        save_failed_tokens([])
+    save_failed_tokens(failed_tokens)
 
-    return updated_access_tokens
+    return refresh_tokens
 
 
 
@@ -248,11 +240,16 @@ def admin_required(f):
 @app.route('/')
 @login_required
 def index():
-    # 读取 actoken.json 中的 access_tokens
-    access_tokens = load_access_tokens()
+    # 读取 chatToken.json 中的 access_tokens
+    tokens = load_retoken()
+    chatgpt = 'ChatGPT'
+    claude = 'Claude'
+    # 计算有效的 access_token 数量
+    token_count = sum(1 for token in tokens if token['status'])
 
-    # 渲染模板，传递 access_tokens 列表
-    return render_template('index.html', access_tokens=access_tokens)
+    # 渲染模板，传递 access_token 的数量
+    return render_template('index.html', token_count=token_count, chatgpt=chatgpt)
+
 
 
 # 定义一个路由，用于处理 UNIQUE_NAME 的提交
@@ -262,18 +259,41 @@ def submit_name():
     data = request.json
     unique_name = data.get('unique_name')
     index = data.get('index')
-    access_tokens = load_access_tokens()
+
+    # 读取 chatToken.json 中有效的 access_tokens
+    tokens = load_retoken()
+
+    # 获取所有有效的 access_token 列表
+    valid_tokens = [token for token in tokens if token['status']]
+
     # 确保 index 是有效的索引
-    if index and 1 <= index <= len(access_tokens):
+    if index and 1 <= index <= len(valid_tokens):
         # 获取对应的 access_token
-        token_info = access_tokens[index - 1] 
-        email, access_token = list(token_info.items())[0]
+        token_info = valid_tokens[index - 1]
+        access_token = token_info['access_token']
+
+        # 注册 token 并获取对应的 token_key
         token_key = register_token(access_token, unique_name)
         print(token_key)
+        if not token_key:
+            # 更新 chatToken.json 中对应条目的 status 为 false
+            for token in tokens:
+                if token['access_token'] == access_token:
+                    token['status'] = False
+                    break
+            
+            # 保存更新后的 tokens 到 chatToken.json
+            save_retoken(tokens)
+
+            return jsonify({
+                "status": "error",
+                "message": "账号失效了，换一个吧"
+            }), 400
+
+        # 获取 OAuth 登录 URL
         logurl = getoauth(token_key)
         return jsonify({
             "status": "success",
-            # "email": email,
             "login_url": logurl
         }), 200
     else:
@@ -281,6 +301,7 @@ def submit_name():
             "status": "error",
             "message": "Invalid index."
         }), 400
+
 
 AUTO_REFRESH_CONFIG_FILE = 'json/auto_refresh_config.json'
 
@@ -449,7 +470,88 @@ def get_failed_tokens():
         return jsonify({"error": "Invalid JSON in failed_tokens.json"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
 
+# 加载Refresh Token
+@app.route('/get_tokens')
+@admin_required
+def get_tokens():
+    try:
+        with open('json/chatToken.json', 'r') as file:
+            tokens = json.load(file)
+        return jsonify(tokens), 200
+    except FileNotFoundError:
+        return jsonify([]), 200  # 如果文件不存在，返回空列表
+    except json.JSONDecodeError:
+        return jsonify({"error": "Invalid JSON in tokens.json"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# 添加新账号
+@app.route('/api/tokens', methods=['POST'])
+@admin_required
+def create_tokens():
+    data = request.get_json()
+    tokens = load_retoken()
+    
+    # 检查账号是否已存在
+    if any(token['email'] == data['email'] for token in tokens):
+        return jsonify({'success': False, 'message': '该账号已存在'}), 400
+    
+    new_token = {
+        'email': data['email'],
+        'refresh_token': data['ReToken'],
+        'access_token': data['AcToken'],
+        'status': True,
+        'type':"GPT"
+    }
+    
+    tokens.append(new_token)
+    save_retoken(tokens)
+    
+    return jsonify({'success': True, 'message': '用户创建成功'})
+
+# 更新账号信息
+@app.route('/api/tokens/<email>', methods=['PUT'])
+@admin_required
+def update_token(email):
+    data = request.get_json()
+    tokens = load_retoken()
+    
+    token_index = next((i for i, token in enumerate(tokens) if token['email'] == email), None)
+    if token_index is None:
+        return jsonify({'success': False, 'message': '账号不存在'}), 404
+
+    
+    # 如果提供了邮箱，则更新邮箱
+    if data.get('ReToken'):
+        tokens[token_index]['email'] = data['email']
+    
+    # 如果提供了ReToken，则更新ReToken
+    if data.get('ReToken'):
+        tokens[token_index]['refresh_token'] = data['ReToken']
+
+    # 如果提供了AcToken，则更新AcToken
+    if data.get('AcToken'):
+        tokens[token_index]['access_token'] = data['AcToken']
+    
+    save_retoken(tokens)
+    return jsonify({'success': True, 'message': '账号更新成功'})
+
+# 删除用户
+@app.route('/api/tokens/<email>', methods=['DELETE'])
+@admin_required
+def delete_token(email):
+    toekns = load_retoken()
+    
+    # 过滤掉要删除的用户
+    updated_email = [token for token in toekns if token['email'] != email]
+    
+    if len(updated_email) == len(toekns):
+        return jsonify({'success': False, 'message': '账号不存在'}), 404
+    
+    save_retoken(updated_email)
+    return jsonify({'success': True, 'message': '账号删除成功'})
 
 # Admin 主页路由
 @app.route('/admin', methods=['GET', 'POST'])
@@ -457,7 +559,7 @@ def get_failed_tokens():
 def admin():
 
     if request.method == 'GET':
-        # 加载并显示 retoken.json 文件中的内容
+        # 加载并显示 chatToken.json 文件中的内容
         retokens = load_retoken()
         return render_template('admin.html', retokens=retokens)
 
@@ -468,7 +570,7 @@ def admin():
         # 如果数据格式有效，保存到文件
         if new_retokens:
             save_retoken(new_retokens)
-            return jsonify({"status": "success", "message": "retoken.json 已更新！"}), 200
+            return jsonify({"status": "success", "message": "chatToken.json 已更新！"}), 200
         else:
             return jsonify({"status": "error", "message": "无效的数据格式！"}), 400
 
@@ -557,4 +659,4 @@ def delete_user(user_id):
 
 # 启动 Flask 应用
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=False)
+    app.run(host='0.0.0.0', debug=True)
