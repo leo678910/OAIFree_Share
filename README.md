@@ -31,7 +31,7 @@ domain是oaifree的站点地址，这里用的是始皇的，可以替换成自�
 ---
 ### Token管理页  
 支持新增、删除、修改账号  
-可自动自动/手动刷新带有Refresh Token账号的Access Token  
+可自动/手动刷新带有Refresh Token账号的Access Token  
 显示刷新失败的Refresh Token信息  
 对失效账号进行标记
 ![image](https://github.com/user-attachments/assets/0a4e26f5-dc9f-49b4-bc88-0860748a73d7)
@@ -70,7 +70,7 @@ source venv/bin/activate
 ```
 ### 安装 Flask 和项目依赖
 ```
-pip install flask requests gunicorn
+pip install flask requests werkzeug gunicorn
 ```
 
 ### 运行 Flask 应用程序
@@ -122,7 +122,7 @@ venv\Scripts\activate
 
 ### 安装 Flask 和项目依赖
 ```
-pip install flask requests waitress
+pip install flask requests werkzeug waitress
 ```
 ### 运行 Flask 应用程序
 使用 Waitress 运行 Flask 应用：
