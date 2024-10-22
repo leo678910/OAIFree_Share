@@ -295,7 +295,7 @@ def submit_name():
     tokens = load_retoken()
 
     # 获取所有有效的 access_token 列表
-    valid_tokens = [token for token in tokens if token['status']]
+    valid_tokens = tokens
 
     # 确保 index 是有效的索引
     if index and 1 <= index <= len(valid_tokens):
