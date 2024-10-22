@@ -131,7 +131,7 @@
 </div>
 
 <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-    <h2 class="text-2xl font-bold text-gray-800 mb-4">自动刷新设置</h2>
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">Access Token刷新设置</h2>
     <div class="flex items-center mb-4">
         <input type="checkbox" id="autoRefreshToggle" class="mr-2">
         <label for="autoRefreshToggle" class="mr-4">启用自动刷新</label>
@@ -142,9 +142,9 @@
 </div>
 
 <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-    <h2 class="text-2xl font-bold text-gray-800 mb-4">失败的 Refresh Token</h2>
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">刷新Refresh Token失败的账号</h2>
     <details class="mb-4">
-        <summary class="cursor-pointer text-blue-600 hover:text-blue-800">点击查看失败的 Refresh Token</summary>
+        <summary class="cursor-pointer text-blue-600 hover:text-blue-800">点击查看</summary>
         <div id="failedTokens" class="mt-2 space-y-1">
             <!-- 失败的 tokens 将在这里动态添加 -->
         </div>
@@ -153,9 +153,13 @@
 
 <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
     <h2 class="text-2xl font-bold text-gray-800 mb-4">刷新历史</h2>
-    <div id="refreshHistory" class="space-y-2">
-        <!-- 刷新历史将在这里动态添加 -->
-    </div>
+    <details class="mb-4">
+        <summary class="cursor-pointer text-blue-600 hover:text-blue-800">点击查看</summary>
+        <div id="refreshHistory" class="space-y-2">
+            <!-- 刷新历史将在这里动态添加 -->
+        </div>
+    </details>
+    
 </div>
 
 <div id="tokenModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
@@ -187,6 +191,17 @@
                     <input
                         class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                         id="AcToken" type="text" placeholder="无Refresh Token时必填">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="PLUS">
+                        PLUS
+                    </label>
+                    <select
+                        class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        id="PLUS" required>
+                        <option value='false'>false</option>
+                        <option value='true'>true</option>
+                    </select>
                 </div>
                 <div class="flex items-center justify-end">
                     <button type="button" onclick="closeModal()"
@@ -254,6 +269,7 @@ function loadTokens() {
                 document.getElementById('email').value = email.email;
                 document.getElementById('ReToken').value = email.refresh_token;
                 document.getElementById('AcToken').value = email.access_token;
+                document.getElementById('PLUS').value = email.PLUS;
             } else {
                 form.reset();
                 document.getElementById('id').value = ''
@@ -297,6 +313,7 @@ function loadTokens() {
             const tkemail = document.getElementById('email').value
             const retoken = document.getElementById('ReToken').value
             const actoken = document.getElementById('AcToken').value
+            const plus = document.getElementById('PLUS').value
             if(!(retoken || actoken)){
                 alert('必须有一个Refresh Token或Access Token')
                 return
@@ -304,7 +321,8 @@ function loadTokens() {
             const tkData = {
                 email: document.getElementById('email').value,
                 ReToken: retoken,
-                AcToken: actoken
+                AcToken: actoken,
+                PLUS: plus
             };
 
             const url = Id ? `/api/tokens/${tkemail}` : '/api/tokens';
@@ -379,7 +397,7 @@ function loadTokens() {
                     const failedTokensDiv = document.getElementById('failedTokens');
                     failedTokensDiv.innerHTML = '';
                     data.forEach(item => {
-                        const email = Object.keys(item)[0];
+                        const email = item.email;
                         const tokenItem = document.createElement('div');
                         tokenItem.className = 'bg-red-100 p-2 rounded';
                         tokenItem.textContent = email;

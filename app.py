@@ -63,6 +63,8 @@ def save_users(users):
     with open(USERS_FILE, 'w', encoding='utf-8') as f:
         json.dump(users, f, ensure_ascii=False, indent=2)
 
+
+#-----------------------------------------chatgpt相关函数------------------------------------------------------
 # 刷新 access_token 的主函数
 def refresh_access_tokens():
     # 读取 refresh_token 列表
@@ -111,7 +113,7 @@ def refresh_access_tokens():
     return refresh_tokens
 
 
-
+# 获取share token
 def register_token(access_token, unique_name, expire_in=0, show_userinfo=True, gpt35_limit=-1, 
                    gpt4_limit=-1, reset_limit=False, show_conversations=False, site_limit="", 
                    temporary_chat=False):
@@ -156,6 +158,7 @@ def register_token(access_token, unique_name, expire_in=0, show_userinfo=True, g
 
     return token_key
 
+# 获取登陆链接
 def getoauth(token):
     domain = app.config.get('domain')
     share_token = token 
@@ -177,6 +180,7 @@ def getoauth(token):
 app.secret_key = app.config.get('secret_key')  # 用于加密 session
 
 
+# ---------------------------------------------------登录登出 认证装饰器---------------------------------------------------------
 # 登录页面
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -236,19 +240,46 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# 主页路由，根据 actoken.json 生成相应数量的 div 盒子
+
+#------------------------------------------------------共享页相关-------------------------------------------------------
+
+# 主页路由，根据 有效的账号数量 生成相应数量的 div 盒子
 @app.route('/')
 @login_required
 def index():
     # 读取 chatToken.json 中的 access_tokens
     tokens = load_retoken()
-    chatgpt = 'ChatGPT'
-    claude = 'Claude'
-    # 计算有效的 access_token 数量
-    token_count = sum(1 for token in tokens if token['status'])
+    
+    # 创建两个列表分别存储PLUS和普通账号
+    plus_tokens = []
+    normal_tokens = []
+    
+    # 遍历所有token并分组
+    for idx, token in enumerate(tokens):
+        if token['status']:  # 如果token有效
+            token_info = {
+                'index': idx,
+                'type': token.get('type', 'unknown'),
+                'PLUS': token.get('PLUS', 'false')
+            }
+            
+            # 根据PLUS状态分组
+            if token_info['PLUS'].lower() == 'true':
+                plus_tokens.append(token_info)
+            else:
+                normal_tokens.append(token_info)
+    
+    # 按顺序合并两个列表，PLUS账号在前
+    valid_tokens = plus_tokens + normal_tokens
 
-    # 渲染模板，传递 access_token 的数量
-    return render_template('index.html', token_count=token_count, chatgpt=chatgpt)
+
+    # 渲染模板,传递有效token的详细信息
+    return render_template(
+        'index.html',
+        valid_tokens=valid_tokens,  # 传递排序后的token列表
+        plus_count=len(plus_tokens),  # 传递PLUS账号数量
+        normal_count=len(normal_tokens)  # 传递普通账号数量
+    )
 
 
 
@@ -260,7 +291,7 @@ def submit_name():
     unique_name = data.get('unique_name')
     index = data.get('index')
 
-    # 读取 chatToken.json 中有效的 access_tokens
+   
     tokens = load_retoken()
 
     # 获取所有有效的 access_token 列表
@@ -302,6 +333,8 @@ def submit_name():
             "message": "Invalid index."
         }), 400
 
+
+#------------------------------------------------------定时任务  tokens刷新-------------------------------------
 
 AUTO_REFRESH_CONFIG_FILE = 'json/auto_refresh_config.json'
 
@@ -446,6 +479,31 @@ def refresh_tokens():
             "message": str(e)
         }), 500
 
+
+# -----------------------------------------------------管理页相关路由----------------------------
+
+
+# Admin 主页路由
+@app.route('/admin', methods=['GET', 'POST'])
+@admin_required
+def admin():
+
+    if request.method == 'GET':
+        # 加载并显示 chatToken.json 文件中的内容
+        retokens = load_retoken()
+        return render_template('GPT.html', retokens=retokens)
+
+    if request.method == 'POST':
+        # 获取更新后的 retoken 数据
+        new_retokens = request.json.get('retokens')
+        
+        # 如果数据格式有效，保存到文件
+        if new_retokens:
+            save_retoken(new_retokens)
+            return jsonify({"status": "success", "message": "chatToken.json 已更新！"}), 200
+        else:
+            return jsonify({"status": "error", "message": "无效的数据格式！"}), 400
+
 # 加载刷新历史
 @app.route('/refresh_history', methods=['GET'])
 @admin_required
@@ -487,6 +545,8 @@ def get_tokens():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+#-----------------------------------------------------------GPT账号管理相关-----------------------------------------
+
 # 添加新账号
 @app.route('/api/tokens', methods=['POST'])
 @admin_required
@@ -503,7 +563,8 @@ def create_tokens():
         'refresh_token': data['ReToken'],
         'access_token': data['AcToken'],
         'status': True,
-        'type':"GPT"
+        'type':"GPT",
+        'PLUS': data['PLUS']
     }
     
     tokens.append(new_token)
@@ -539,6 +600,8 @@ def update_token(email):
         tokens[token_index]['status'] = True
     else:
         tokens[token_index]['access_token'] = ''
+    if data.get('PLUS'):
+        tokens[token_index]['PLUS'] = data['PLUS']
     save_retoken(tokens)
     return jsonify({'success': True, 'message': '账号更新成功'})
 
@@ -557,32 +620,12 @@ def delete_token(email):
     save_retoken(updated_email)
     return jsonify({'success': True, 'message': '账号删除成功'})
 
-# Admin 主页路由
-@app.route('/admin', methods=['GET', 'POST'])
-@admin_required
-def admin():
-
-    if request.method == 'GET':
-        # 加载并显示 chatToken.json 文件中的内容
-        retokens = load_retoken()
-        return render_template('admin.html', retokens=retokens)
-
-    if request.method == 'POST':
-        # 获取更新后的 retoken 数据
-        new_retokens = request.json.get('retokens')
-        
-        # 如果数据格式有效，保存到文件
-        if new_retokens:
-            save_retoken(new_retokens)
-            return jsonify({"status": "success", "message": "chatToken.json 已更新！"}), 200
-        else:
-            return jsonify({"status": "error", "message": "无效的数据格式！"}), 400
 
 
-# 用户管理部分  
+# ------------------------------------------------------用户管理部分------------------------------------------------
 USERS_FILE = 'json/user.json'
 
-@app.route('/user-management')
+@app.route('/user')
 @admin_required
 def user_management():
     return render_template('user_management.html')
