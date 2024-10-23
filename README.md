@@ -4,11 +4,13 @@
 ## 配置项  
 ### config.json
 secret_key最好复杂一点  
-domain是oaifree的站点地址，这里用的是始皇的，可以替换成自己的反代地址  
+domain_chatgpt是oaifree的站点地址，这里用的是始皇的，可以替换成自己的反代地址  
+domain_claudet是fuclaude的站点地址，这里用的是始皇的，可以替换成自己的反代地址  
 ```
 {
     "secret_key":"your_admin_secret_key",
-    "domain":"new.oaifree.com" 
+    "domain_chatgpt":"new.oaifree.com", 
+    "domain_claude": "demo.fuclaude.com"
 }
 ```
 ## 页面预览  
@@ -36,6 +38,9 @@ domain是oaifree的站点地址，这里用的是始皇的，可以替换成自�
 对失效账号进行标记
 ![image](https://github.com/user-attachments/assets/0a4e26f5-dc9f-49b4-bc88-0860748a73d7)
 ![image](https://github.com/user-attachments/assets/fe87321e-a5dc-49f7-9f58-449fb8957ae8)
+支持Claude  
+![image](https://github.com/user-attachments/assets/743f26cc-844c-425f-bb6b-7f85891017d6)
+
 
 ---
 ### 用户管理页 
