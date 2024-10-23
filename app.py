@@ -379,7 +379,12 @@ def submit_name():
     Type = data.get('type')
 
 
+<<<<<<< HEAD
     if Type == 'chatgpt':
+=======
+    # 获取所有有效的 access_token 列表
+    valid_tokens = tokens
+>>>>>>> bddc0471fd038400c10e62dc36396a25188c7d0e
 
         tokens = load_retoken()
 

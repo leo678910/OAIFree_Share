@@ -26,7 +26,7 @@ domain是oaifree的站点地址，这里用的是始皇的，可以替换成自�
 ### 共享页  
 点击公告中的小图标可以跳转到后台管理(仅限管理员)  
 根据后台的Token数量生成对应数量的盒子  
-![image](https://github.com/user-attachments/assets/9fa82f95-496e-4ae5-8015-c304da6bfa35)
+![image](https://github.com/user-attachments/assets/02fb0e93-9361-4acf-984d-1b970a864ba4)
 
 ---
 ### Token管理页  
@@ -35,6 +35,7 @@ domain是oaifree的站点地址，这里用的是始皇的，可以替换成自�
 显示刷新失败的Refresh Token信息  
 对失效账号进行标记
 ![image](https://github.com/user-attachments/assets/0a4e26f5-dc9f-49b4-bc88-0860748a73d7)
+![image](https://github.com/user-attachments/assets/fe87321e-a5dc-49f7-9f58-449fb8957ae8)
 
 ---
 ### 用户管理页 
