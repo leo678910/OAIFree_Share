@@ -28,7 +28,7 @@ domain_claudet是fuclaude的站点地址，这里用的是始皇的，可以替�
 ### 共享页  
 点击公告中的小图标可以跳转到后台管理(仅限管理员)  
 根据后台的Token数量生成对应数量的盒子  
-![image](https://github.com/user-attachments/assets/02fb0e93-9361-4acf-984d-1b970a864ba4)
+![image](https://github.com/user-attachments/assets/3d00c4f1-bd8b-482e-81bc-1d4b9b7f4142)
 
 ---
 ### Token管理页  
