@@ -83,6 +83,25 @@
                 transform: rotate(45deg) translateX(100%);
             }
         }
+
+        .modal {
+            transition: opacity 0.3s ease;
+            margin: auto;
+        }
+
+        .announcement {
+            animation: slideDown 0.5s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+            }
+
+            to {
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 
@@ -109,18 +128,18 @@
             </div>
         </div>
 
-        <h1 class="text-3xl font-bold text-center my-8 text-gray-800">共享账号列表</h1>
+        <h1 class="text-3xl font-bold text-center my-8 text-gray-800">AI共享号💖</h1>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {% if valid_tokens %}
-            {% for token in valid_tokens %}
+            {% if gpt_valid_tokens %}
+            {% for token in gpt_valid_tokens %}
             <div class="account-box {% if token.PLUS.lower() == 'true' %}plus{% endif %} bg-white rounded-lg shadow-md p-6 text-center cursor-pointer"
-                data-index="{{ token.index }}">
+                data-index="{{ token.index }}"  data-type="chatgpt">
                 <h2 class="text-xl font-semibold mb-2">
                     {% if token.PLUS.lower() == 'true' %}
-                    PLUS共享账号 {{ loop.index }}
+                    ChatGPT PLUS {{ loop.index }}
                     {% else %}
-                    共享账号 {{ loop.index }}
+                    ChatGPT普号 {{ loop.index }}
                     {% endif %}
                 </h2>
                 <p class="text-gray-600"><img src="{{ token.type }}" alt="" style="width: 2rem; margin: 0 auto;"></p>
@@ -129,7 +148,28 @@
             {% else %}
             <p class="text-lg text-gray-600 col-span-full text-center">暂无共享账号</p>
             {% endif %}
+        </div>
 
+        <h1 class="text-3xl font-bold text-center my-8 text-gray-800"></h1>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {% if claude_valid_tokens %}
+            {% for token in claude_valid_tokens %}
+            <div class="account-box {% if token.PLUS.lower() == 'true' %}plus{% endif %} bg-white rounded-lg shadow-md p-6 text-center cursor-pointer"
+                data-index="{{ token.index }}" data-type="claude">
+                <h2 class="text-xl font-semibold mb-2">
+                    {% if token.PLUS.lower() == 'true' %}
+                    Claude PLUS {{ loop.index }}
+                    {% else %}
+                    Claude普号 {{ loop.index }}
+                    {% endif %}
+                </h2>
+                <p class="text-gray-600"><img src="{{ token.type }}" alt="" style="width: 2rem; margin: 0 auto;"></p>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="text-lg text-gray-600 col-span-full text-center">暂无共享账号</p>
+            {% endif %}
         </div>
     </div>
 
@@ -144,7 +184,7 @@
                     <span class="mx-2">联系我们: <a href="mailto:your@email.com"
                             class="text-blue-500 hover:text-blue-700">your@email.com</a></span>
                     <span class="mx-2">|</span>
-                    <span class="mx-2">Version 1.1.0</span>
+                    <span class="mx-2">Version 1.2.0</span>
                 </p>
             </div>
         </div>
@@ -197,11 +237,12 @@
             boxes.forEach(box => {
                 box.addEventListener('click', function () {
                     currentIndex = this.dataset.index;
+                    currentType = this.dataset.type;
                     showModal();
                 });
             });
             admin.addEventListener('click', () => {
-                window.location.href = '/admin';
+                window.location.href = '/chatgpt';
             });
 
             submitNameBtn.addEventListener('click', function () {
@@ -214,7 +255,8 @@
                         },
                         body: JSON.stringify({
                             unique_name: uniqueName,
-                            index: +currentIndex + 1
+                            index: +currentIndex + 1,
+                            type: currentType
                         })
                     })
                         .then(response => response.json())

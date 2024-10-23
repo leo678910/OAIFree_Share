@@ -31,6 +31,21 @@ def save_retoken(updated_tokens):
         json.dump(updated_tokens, f, indent=4)
 
 
+# 读取 claudeToken.json 文件
+def load_cltoken():
+    try:
+        with open('json/claudeToken.json', 'r') as f:
+            retokens = json.load(f)
+        return retokens
+    except FileNotFoundError:
+        return []
+
+# 保存更新后的 claudeToken.json 文件
+def save_cltoken(updated_tokens):
+    with open('json/claudeToken.json', 'w') as f:
+        json.dump(updated_tokens, f, indent=4)
+
+
 # 写入 failed_tokens.json 文件
 def save_failed_tokens(failed_tokens):
     with open('json/failed_tokens.json', 'w') as f:
@@ -64,7 +79,7 @@ def save_users(users):
         json.dump(users, f, ensure_ascii=False, indent=2)
 
 
-#-----------------------------------------chatgpt相关函数------------------------------------------------------
+#-----------------------------------------chatgpt相关------------------------------------------------------
 # 刷新 access_token 的主函数
 def refresh_access_tokens():
     # 读取 refresh_token 列表
@@ -160,7 +175,7 @@ def register_token(access_token, unique_name, expire_in=0, show_userinfo=True, g
 
 # 获取登陆链接
 def getoauth(token):
-    domain = app.config.get('domain')
+    domain = app.config.get('domain_chatgpt')
     share_token = token 
     
     url = f'https://{domain}/api/auth/oauth_token'
@@ -171,16 +186,63 @@ def getoauth(token):
     data = {
         'share_token': share_token
     }
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        loginurl = response.json().get('login_url')
+        return loginurl
+    except requests.RequestException as e:
+        return None
+
+
+
+
+
+#-----------------------------------------------------claude相关----------------------------------------------------------------
+
+def get_claude_login_url(session_key,uname):
+    domain = app.config.get('domain_claude')
+    url = f'https://{domain}/manage-api/auth/oauth_token'
     
-    response = requests.post(url, headers=headers, json=data)
-    loginurl = response.json().get('login_url')
-    return loginurl
+    # 请求体参数
+    data = {
+        'session_key': session_key,
+        'unique_name': uname  # 生成唯一标识符
+    }
+
+    # 设置请求头
+    headers = {'Content-Type': 'application/json'}
+
+    try:
+        # 发送 POST 请求
+        response = requests.post(url, headers=headers, data=json.dumps(data))
+
+        # 检查响应状态码是否为200
+        if response.status_code == 200:
+            response_data = response.json()
+
+            # 检查 'login_url' 是否存在
+            if 'login_url' in response_data:
+                login_url = response_data['login_url']
+                
+                # 如果URL没有以http开头，拼接基础URL
+                if not login_url.startswith('http'):
+                    return f'https://{domain}' + login_url
+                return login_url
+        
+        # 如果状态码不是200或login_url不存在，返回None
+        return None
+    
+    except requests.RequestException as e:
+        # 捕获异常并返回错误信息
+        return None
 
 
-app.secret_key = app.config.get('secret_key')  # 用于加密 session
 
 
 # ---------------------------------------------------登录登出 认证装饰器---------------------------------------------------------
+
+app.secret_key = app.config.get('secret_key')  # 用于加密 session
+
 # 登录页面
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -202,7 +264,7 @@ def login():
             
             # 如果是管理员，跳转到管理页面，否则跳转到首页
             if user['role'] == 'admin':
-                return redirect(url_for('admin'))
+                return redirect(url_for('chatgpt'))
             else:
                 return redirect(url_for('index'))
         else:
@@ -248,14 +310,20 @@ def admin_required(f):
 @login_required
 def index():
     # 读取 chatToken.json 中的 access_tokens
-    tokens = load_retoken()
+    gpt_tokens = load_retoken()
+
+    # 读取 claudeToken.json 中的 token
+    claude_tokens = load_cltoken()
     
     # 创建两个列表分别存储PLUS和普通账号
-    plus_tokens = []
-    normal_tokens = []
+    gpt_plus_tokens = []
+    gpt_normal_tokens = []
+
+    claude_plus_tokens = []
+    claude_normal_tokens = []
     
     # 遍历所有token并分组
-    for idx, token in enumerate(tokens):
+    for idx, token in enumerate(gpt_tokens):
         if token['status']:  # 如果token有效
             token_info = {
                 'index': idx,
@@ -265,20 +333,38 @@ def index():
             
             # 根据PLUS状态分组
             if token_info['PLUS'].lower() == 'true':
-                plus_tokens.append(token_info)
+                gpt_plus_tokens.append(token_info)
             else:
-                normal_tokens.append(token_info)
+                gpt_normal_tokens.append(token_info)
+
+    # 遍历所有token并分组
+    for idx, token in enumerate(claude_tokens):
+        if token['status']:  # 如果token有效
+            token_info = {
+                'index': idx,
+                'type': token.get('type', 'unknown'),
+                'PLUS': token.get('PLUS', 'false')
+            }
+            
+            # 根据PLUS状态分组
+            if token_info['PLUS'].lower() == 'true':
+
+                claude_plus_tokens.append(token_info)
+            else:
+                claude_normal_tokens.append(token_info)
     
+
     # 按顺序合并两个列表，PLUS账号在前
-    valid_tokens = plus_tokens + normal_tokens
+    gpt_valid_tokens = gpt_plus_tokens + gpt_normal_tokens
+
+    claude_valid_tokens = claude_plus_tokens + claude_normal_tokens
 
 
     # 渲染模板,传递有效token的详细信息
     return render_template(
         'index.html',
-        valid_tokens=valid_tokens,  # 传递排序后的token列表
-        plus_count=len(plus_tokens),  # 传递PLUS账号数量
-        normal_count=len(normal_tokens)  # 传递普通账号数量
+        gpt_valid_tokens=gpt_valid_tokens,  # 传递排序后的token列表
+        claude_valid_tokens= claude_valid_tokens
     )
 
 
@@ -290,48 +376,95 @@ def submit_name():
     data = request.json
     unique_name = data.get('unique_name')
     index = data.get('index')
+    Type = data.get('type')
 
-   
-    tokens = load_retoken()
 
-    # 获取所有有效的 access_token 列表
-    valid_tokens = [token for token in tokens if token['status']]
+    if Type == 'chatgpt':
 
-    # 确保 index 是有效的索引
-    if index and 1 <= index <= len(valid_tokens):
-        # 获取对应的 access_token
-        token_info = valid_tokens[index - 1]
-        access_token = token_info['access_token']
+        tokens = load_retoken()
 
-        # 注册 token 并获取对应的 token_key
-        token_key = register_token(access_token, unique_name)
-        print(token_key)
-        if not token_key:
-            # 更新 chatToken.json 中对应条目的 status 为 false
-            for token in tokens:
-                if token['access_token'] == access_token:
-                    token['status'] = False
-                    break
+        valid_tokens = tokens
+        
+        # 确保 index 是有效的索引
+        if index and 1 <= index <= len(valid_tokens):
             
-            # 保存更新后的 tokens 到 chatToken.json
-            save_retoken(tokens)
+            # 获取对应的 access_token
+            token_info = valid_tokens[index - 1]
+            
+            access_token = token_info['access_token']
+
+            # 注册 token 并获取对应的 token_key
+            token_key = register_token(access_token, unique_name)
+            if not token_key:
+                # 更新 chatToken.json 中对应条目的 status 为 false
+                for token in tokens:
+                    if token['access_token'] == access_token:
+                        print(token['email'])
+                        token['status'] = False
+                        break
+                
+                # 保存更新后的 tokens 到 chatToken.json
+                save_retoken(tokens)
+
+                return jsonify({
+                    "status": "error",
+                    "message": "账号失效了，换一个吧"
+                }), 400
+
+            # 获取 OAuth 登录 URL
+            logurl = getoauth(token_key)
 
             return jsonify({
+                "status": "success",
+                "login_url": logurl
+            }), 200
+        else:
+            return jsonify({
                 "status": "error",
-                "message": "账号失效了，换一个吧"
+                "message": "Invalid index."
+            }), 400
+    else:
+        tokens = load_cltoken()
+
+        valid_tokens = tokens
+
+        # 确保 index 是有效的索引
+        if index and 1 <= index <= len(valid_tokens):
+            
+            # 获取对应的 token
+            token_info = valid_tokens[index - 1]
+            
+            skToken = token_info['skToken']
+
+            # 获取登录链接 
+            logurl = get_claude_login_url(skToken, unique_name)
+            if not logurl:
+                # 更新 chatToken.json 中对应条目的 status 为 false
+                for token in tokens:
+                    if token['skToken'] == skToken:
+                        print(token['email'])
+                        token['status'] = False
+                        break
+                
+                # 保存更新后的 tokens 到 chatToken.json
+                save_cltoken(tokens)
+
+                return jsonify({
+                    "status": "error",
+                    "message": "账号失效了，换一个吧"
+                }), 400
+            return jsonify({
+                "status": "success",
+                "login_url": logurl
+            }), 200
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Invalid index."
             }), 400
 
-        # 获取 OAuth 登录 URL
-        logurl = getoauth(token_key)
-        return jsonify({
-            "status": "success",
-            "login_url": logurl
-        }), 200
-    else:
-        return jsonify({
-            "status": "error",
-            "message": "Invalid index."
-        }), 400
+
+        
 
 
 #------------------------------------------------------定时任务  tokens刷新-------------------------------------
@@ -483,10 +616,10 @@ def refresh_tokens():
 # -----------------------------------------------------管理页相关路由----------------------------
 
 
-# Admin 主页路由
-@app.route('/admin', methods=['GET', 'POST'])
+# GPT 主页路由
+@app.route('/chatgpt', methods=['GET', 'POST'])
 @admin_required
-def admin():
+def chatgpt():
 
     if request.method == 'GET':
         # 加载并显示 chatToken.json 文件中的内容
@@ -503,6 +636,29 @@ def admin():
             return jsonify({"status": "success", "message": "chatToken.json 已更新！"}), 200
         else:
             return jsonify({"status": "error", "message": "无效的数据格式！"}), 400
+        
+# Claude 主页路由
+@app.route('/claude', methods=['GET', 'POST'])
+@admin_required
+def claude():
+
+    if request.method == 'GET':
+        # 加载并显示 chatToken.json 文件中的内容
+        retokens = load_retoken()
+        return render_template('claude.html', retokens=retokens)
+
+    if request.method == 'POST':
+        # 获取更新后的 retoken 数据
+        new_retokens = request.json.get('retokens')
+        
+        # 如果数据格式有效，保存到文件
+        if new_retokens:
+            save_retoken(new_retokens)
+            return jsonify({"status": "success", "message": "chatToken.json 已更新！"}), 200
+        else:
+            return jsonify({"status": "error", "message": "无效的数据格式！"}), 400
+
+#-----------------------------------------------------------GPT账号管理相关-----------------------------------------
 
 # 加载刷新历史
 @app.route('/refresh_history', methods=['GET'])
@@ -545,7 +701,6 @@ def get_tokens():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-#-----------------------------------------------------------GPT账号管理相关-----------------------------------------
 
 # 添加新账号
 @app.route('/api/tokens', methods=['POST'])
@@ -563,7 +718,7 @@ def create_tokens():
         'refresh_token': data['ReToken'],
         'access_token': data['AcToken'],
         'status': True,
-        'type':"GPT",
+        'type':"/static/gpt.png",
         'PLUS': data['PLUS']
     }
     
@@ -585,7 +740,7 @@ def update_token(email):
 
     
     # 如果提供了邮箱，则更新邮箱
-    if data.get('ReToken'):
+    if data.get('email'):
         tokens[token_index]['email'] = data['email']
     
     # 如果提供了ReToken，则更新ReToken
@@ -618,6 +773,89 @@ def delete_token(email):
         return jsonify({'success': False, 'message': '账号不存在'}), 404
     
     save_retoken(updated_email)
+    return jsonify({'success': True, 'message': '账号删除成功'})
+
+
+#-----------------------------------------------------------Claude账号管理相关-----------------------------------------
+
+# 加载Claude Token
+@app.route('/get_Claude')
+@admin_required
+def get_Claude():
+    try:
+        with open('json/claudeToken.json', 'r') as file:
+            tokens = json.load(file)
+        return jsonify(tokens), 200
+    except FileNotFoundError:
+        return jsonify([]), 200  # 如果文件不存在，返回空列表
+    except json.JSONDecodeError:
+        return jsonify({"error": "Invalid JSON in tokens.json"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# 添加新账号
+@app.route('/api/Claude', methods=['POST'])
+@admin_required
+def create_Claude():
+    data = request.get_json()
+    tokens = load_cltoken()
+    
+    # 检查账号是否已存在
+    if any(token['email'] == data['email'] for token in tokens):
+        return jsonify({'success': False, 'message': '该账号已存在'}), 400
+    
+    new_token = {
+        'email': data['email'],
+        'skToken': data['SkToken'],
+        'status': True,
+        'type':"/static/claude.png",
+        'PLUS': data['PLUS']
+    }
+    
+    tokens.append(new_token)
+    save_cltoken(tokens)
+    
+    return jsonify({'success': True, 'message': '用户创建成功'})
+
+# 更新账号信息
+@app.route('/api/Claude/<email>', methods=['PUT'])
+@admin_required
+def update_Claude(email):
+    data = request.get_json()
+    tokens = load_cltoken()
+    
+    token_index = next((i for i, token in enumerate(tokens) if token['email'] == email), None)
+    if token_index is None:
+        return jsonify({'success': False, 'message': '账号不存在'}), 404
+
+    
+    # 如果提供了邮箱，则更新邮箱
+    if data.get('email'):
+        tokens[token_index]['email'] = data['email']
+    
+    # 如果提供了ReToken，则更新ReToken
+    if data.get('SkToken'):
+        tokens[token_index]['skToken'] = data['SkToken']
+        tokens[token_index]['status'] = True
+    
+    if data.get('PLUS'):
+        tokens[token_index]['PLUS'] = data['PLUS']
+    save_cltoken(tokens)
+    return jsonify({'success': True, 'message': '账号更新成功'})
+
+# 删除用户
+@app.route('/api/Claude/<email>', methods=['DELETE'])
+@admin_required
+def delete_Claude(email):
+    toekns = load_cltoken()
+    
+    # 过滤掉要删除的用户
+    updated_email = [token for token in toekns if token['email'] != email]
+    
+    if len(updated_email) == len(toekns):
+        return jsonify({'success': False, 'message': '账号不存在'}), 404
+    
+    save_cltoken(updated_email)
     return jsonify({'success': True, 'message': '账号删除成功'})
 
 
