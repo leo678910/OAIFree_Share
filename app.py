@@ -717,6 +717,7 @@ def create_tokens():
         'email': data['email'],
         'refresh_token': data['ReToken'],
         'access_token': data['AcToken'],
+        'share_token': data['ShToken'],
         'status': True,
         'type':"/static/gpt.png",
         'PLUS': data['PLUS']
